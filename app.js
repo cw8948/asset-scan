@@ -25,13 +25,18 @@
 
   function norm(code) { return String(code || '').trim().toUpperCase(); }
 
-  // 들어온 바코드 → 기록하거나 거부. 반환: true(기록) / false
-  function handle(raw) {
+  // 카메라로 읽은 값의 자산번호 형식 — 영문 1~3자 + 숫자 4~7자리 (실측: EA91011·E950534·BC00001 등)
+  // 거꾸로·잘려 읽힌 값(예: 11019AE)을 막는다. 직접 입력은 사람이 본 값이라 검사하지 않는다.
+  var ASSET_RE = /^[A-Z]{1,3}\d{4,7}$/;
+
+  // 들어온 바코드 → 기록하거나 거부. source: 'camera' | 'manual'. 반환: true(기록) / false
+  function handle(raw, source) {
     var code = norm(raw);
     var msg = null;
     if (!state.location) msg = '위치를 먼저 입력하세요.';
     else if (!code) msg = '빈 값입니다.';
     else if (code.length > 10) msg = code + ' — 10자를 넘어 양식에 맞지 않습니다.';
+    else if (source === 'camera' && !ASSET_RE.test(code)) msg = code + ' — 자산번호 형식이 아닙니다. 바코드를 바로 놓고 다시 찍거나 직접 입력하세요.';
     else {
       var dup = state.records.find(function (r) { return r.barcode === code; });
       if (dup) msg = code + ' — 이미 ' + dup.location + ' 에서 찍었습니다.';
@@ -56,7 +61,7 @@
     if (!state.location) { toast('위치를 먼저 입력하세요.', 'err'); $('loc').focus(); return; }
     $('cam').classList.add('on');
     $('btnCam').disabled = true;
-    Scanner.start($('video'), handle).then(function () {
+    Scanner.start($('video'), function (c) { handle(c, 'camera'); }).then(function () {
       camOn = true; $('btnCam').disabled = false; $('btnCam').textContent = '카메라 끄기';
       var c = Scanner.caps();
       $('btnTorch').style.display = c.torch ? '' : 'none';
@@ -182,7 +187,7 @@
   };
   $('manual').addEventListener('keydown', function (e) {
     if (e.key !== 'Enter') return;
-    handle(this.value); this.value = '';
+    handle(this.value, 'manual'); this.value = '';
   });
   $('btnSave').onclick = saveFile;
   $('btnShare').onclick = shareFile;

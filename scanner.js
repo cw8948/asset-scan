@@ -65,21 +65,36 @@
     finally { zx.reset(); }
   }
 
-  // 가운데 띠(폭 90% × 높이 40%)를 원본 해상도로 잘라 판독
-  function grab(video) {
+  // 가운데 띠를 원본 해상도로 잘라 판독한다.
+  // 가로 띠(폭 90% × 높이 40%)와 세로 띠(폭 40% × 높이 90%, 90° 돌려 가로로 눕힘)를 번갈아 본다.
+  // 세로 띠가 없으면 세로로 돌아간 바코드를 한 번도 못 읽는다(261020 탐침: 90°·270° 판독 0회).
+  var phase = 0;
+  function grab(video, vertical) {
     var vw = video.videoWidth, vh = video.videoHeight;
     if (!vw || !vh) return false;
-    var sw = Math.round(vw * 0.9), sh = Math.round(vh * 0.4);
-    var k = Math.min(1, 1280 / sw);
-    canvas.width = Math.round(sw * k); canvas.height = Math.round(sh * k);
-    ctx.drawImage(video, (vw - sw) / 2, (vh - sh) / 2, sw, sh, 0, 0, canvas.width, canvas.height);
+    var sw = Math.round(vw * (vertical ? 0.4 : 0.9)), sh = Math.round(vh * (vertical ? 0.9 : 0.4));
+    var long = vertical ? sh : sw, k = Math.min(1, 1280 / long);
+    var dw = Math.round(sw * k), dh = Math.round(sh * k);
+    var sx = (vw - sw) / 2, sy = (vh - sh) / 2;
+    if (!vertical) {
+      canvas.width = dw; canvas.height = dh;
+      ctx.drawImage(video, sx, sy, sw, sh, 0, 0, dw, dh);
+    } else {
+      canvas.width = dh; canvas.height = dw;
+      ctx.save();
+      ctx.translate(canvas.width / 2, canvas.height / 2);
+      ctx.rotate(-Math.PI / 2);
+      ctx.drawImage(video, sx, sy, sw, sh, -dw / 2, -dh / 2, dw, dh);
+      ctx.restore();
+    }
     return true;
   }
 
   function tick(video, onCode) {
     if (!running) return;
     var next = function () { if (running) timer = setTimeout(function () { tick(video, onCode); }, 100); };
-    if (video.readyState < 2 || !grab(video)) return next();
+    phase = 1 - phase;
+    if (video.readyState < 2 || !grab(video, phase === 1)) return next();
     var p = native
       ? native.detect(canvas).then(function (d) { return d.length ? d[0].rawValue : null; }).catch(function () { return null; })
       : Promise.resolve(zx ? decodeZxing() : null);
