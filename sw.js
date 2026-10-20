@@ -1,7 +1,9 @@
 // 오프라인 동작용 — 앱 파일만 캐시한다(스캔 기록은 다루지 않음). 파일을 고치면 VERSION 을 올릴 것.
-var VERSION = 'asset-pwa-v2';
-var FILES = ['./', 'index.html', 'app.js', 'export.js', 'manifest.webmanifest',
-  'icon-192.png', 'icon-512.png', 'vendor/html5-qrcode.min.js', 'vendor/xlsx.full.min.js'];
+var VERSION = 'asset-pwa-v3';
+var FILES = ['./', 'index.html', 'app.js', 'export.js', 'scanner.js', 'manifest.webmanifest',
+  'icon-192.png', 'icon-512.png', 'vendor/zxing-library.min.js', 'vendor/xlsx.full.min.js',
+  'help.html', 'help/step1.jpg', 'help/step2.jpg', 'help/step3.jpg', 'help/step4.jpg',
+  'help/step5.jpg', 'help/step6.jpg', 'help/step7.jpg', 'help/step8.jpg'];
 
 self.addEventListener('install', function (e) {
   e.waitUntil(caches.open(VERSION).then(function (c) { return c.addAll(FILES); }));
