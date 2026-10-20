@@ -25,9 +25,12 @@
 
   function norm(code) { return String(code || '').trim().toUpperCase(); }
 
-  // 카메라로 읽은 값의 자산번호 형식 — 영문 1~3자 + 숫자 4~7자리 (실측: EA91011·E950534·BC00001 등)
-  // 거꾸로·잘려 읽힌 값(예: 11019AE)을 막는다. 직접 입력은 사람이 본 값이라 검사하지 않는다.
-  var ASSET_RE = /^[A-Z]{1,3}\d{4,7}$/;
+  // 카메라로 읽은 값의 자산코드 형식 — 7자리 = 분류 1자 + 취득연도 2자 + 일련번호 4자리
+  //   분류: B 건물 · C 건물장비 · D 구축물 · E 기기장비 · F 공기구비품 · G 차량운반구 · X 소프트웨어 등 · Z 기타(예술품 등)
+  //   취득연도: 1990년대 = 숫자 2자리(95~99) / 2000년대~ = 연대 문자 + 끝자리(A0=2000, B9=2019, C5=2025)
+  //   근거: 2025 유형자산명세서 22개 시트 고유 코드 23,167건 전부 일치(261021). ⚠ 2030년(D0~)부터는 [A-C] → [A-D] 로 넓힐 것
+  // 거꾸로·잘려 읽힌 값(숫자로 시작하는 값, 6자리로 잘린 값 등)을 막는다. 직접 입력은 사람이 본 값이라 검사하지 않는다.
+  var ASSET_RE = /^[BCDEFGXZ](9\d|[A-C]\d)\d{4}$/;
 
   // 들어온 바코드 → 기록하거나 거부. source: 'camera' | 'manual'. 반환: true(기록) / false
   function handle(raw, source) {
@@ -36,7 +39,7 @@
     if (!state.location) msg = '위치를 먼저 입력하세요.';
     else if (!code) msg = '빈 값입니다.';
     else if (code.length > 10) msg = code + ' — 10자를 넘어 양식에 맞지 않습니다.';
-    else if (source === 'camera' && !ASSET_RE.test(code)) msg = code + ' — 자산번호 형식이 아닙니다. 바코드를 바로 놓고 다시 찍거나 직접 입력하세요.';
+    else if (source === 'camera' && !ASSET_RE.test(code)) msg = code + ' — 자산코드 형식이 아닙니다. 바코드를 테두리 안에 다시 맞추거나 직접 입력하세요.';
     else {
       var dup = state.records.find(function (r) { return r.barcode === code; });
       if (dup) msg = code + ' — 이미 ' + dup.location + ' 에서 찍었습니다.';
