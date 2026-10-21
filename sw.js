@@ -1,11 +1,11 @@
 // 오프라인 동작용 — 앱 파일만 캐시한다(스캔 기록은 다루지 않음). 파일을 고치면 VERSION 을 올릴 것.
 // 화면(HTML)·앱 코드(js)는 네트워크 우선: 인터넷이 되면 한 번만 열어도 새 판이 뜨고, 안 되면 캐시로 연다.
 // 라이브러리·그림은 캐시 우선(크고 거의 안 바뀜).
-var VERSION = 'asset-pwa-v5';
+var VERSION = 'asset-pwa-v6';
 var FILES = ['./', 'index.html', 'app.js', 'export.js', 'scanner.js', 'manifest.webmanifest',
   'icon-192.png', 'icon-512.png', 'vendor/zxing-library.min.js', 'vendor/xlsx.full.min.js',
   'help.html', 'help/step1.jpg', 'help/step2.jpg', 'help/step3.jpg', 'help/step4.jpg',
-  'help/step5.jpg', 'help/step6.jpg', 'help/step7.jpg', 'help/step8.jpg'];
+  'help/step5.jpg', 'help/step6.jpg', 'help/step7.jpg', 'help/step8.jpg', 'help/qr.png'];
 
 self.addEventListener('install', function (e) {
   e.waitUntil(caches.open(VERSION).then(function (c) { return c.addAll(FILES); }));

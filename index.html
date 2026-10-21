@@ -84,6 +84,11 @@
 </header>
 
 <main>
+  <div id="inapp" class="card" style="display:none;border:2px solid var(--warn)">
+    <b style="color:var(--warn)">카카오톡 안에서 열렸습니다</b>
+    <p class="hint" id="inappMsg" style="font-size:14px;color:var(--text)"></p>
+  </div>
+
   <section class="card">
     <h2><span class="no">1</span>위치 입력 <span class="req">필수</span></h2>
     <input id="loc" type="text" autocomplete="off" autocapitalize="characters" maxlength="10" placeholder="예: S1301">

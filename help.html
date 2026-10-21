@@ -30,6 +30,10 @@
   .step ul { margin: 0; padding-left: 20px; font-size: 15px; }
   .step li { margin-bottom: 6px; }
   .mark { color: var(--mark); font-weight: 700; }
+  .start { display: flex; gap: 16px; align-items: center; background: var(--card); border: 2px solid var(--navy);
+           border-radius: 12px; padding: 14px; margin-bottom: 14px; break-inside: avoid; page-break-inside: avoid; }
+  .start img { width: 120px; height: 120px; flex: 0 0 120px; background: #fff; border-radius: 6px; }
+  .start .url { margin: 0; font-family: Consolas, Menlo, monospace; font-size: 16px; font-weight: 700; color: var(--gold); word-break: break-all; }
   .tip { margin-top: 10px; font-size: 13px; color: var(--muted); }
   .plain { break-inside: avoid; page-break-inside: avoid; }
   table { border-collapse: collapse; width: 100%; font-size: 14px; }
@@ -50,13 +54,23 @@
 <body>
 <header>
   <h1>자산 재물조사 앱 사용법</h1>
-  <p>핸드폰 카메라로 자산 바코드를 찍어 ZEUS 업로드용 엑셀을 만듭니다. <a class="back" href="./">← 앱으로 돌아가기</a></p>
+  <p>핸드폰 카메라로 자산 바코드를 찍어 ZEUS 업로드용 엑셀을 만듭니다. · 2026.10.21. 판 <a class="back" href="./">← 앱으로 돌아가기</a></p>
 </header>
 <main>
+  <section class="start">
+    <img src="help/qr.png" alt="앱 주소 QR 코드">
+    <div>
+      <h2 style="margin:0 0 6px;font-size:18px">앱 주소</h2>
+      <p class="url">https://cw8948.github.io/asset-scan/</p>
+      <p style="margin:6px 0 0;font-size:14px">핸드폰 카메라로 QR 코드를 비추거나 주소를 직접 입력해 엽니다. 설치 파일은 없습니다.</p>
+    </div>
+  </section>
+
   <div class="note">
-    <b>처음 한 번만</b> · 안드로이드는 <b>크롬</b>, 아이폰은 <b>사파리</b>로 앱 주소를 엽니다. 카메라 권한을 물으면 <b>허용</b>을 누릅니다.<br>
-    홈 화면에 아이콘을 만들어 두면 다음부터 앱처럼 열 수 있습니다.
-    안드로이드: 오른쪽 위 <b>⋮</b> → <b>홈 화면에 추가</b> / 아이폰: 아래쪽 <b>공유(□↑)</b> → <b>홈 화면에 추가</b>
+    <b>처음 한 번만</b><br>
+    ① 안드로이드는 <b>크롬</b>, 아이폰은 <b>사파리</b>로 엽니다. 카메라 권한을 물으면 <b>허용</b>을 누릅니다.<br>
+    ② <b>카카오톡에서 링크를 누르면</b> 자동으로 크롬(아이폰은 사파리)으로 넘어갑니다. 넘어가지 않으면 안드로이드는 오른쪽 위 <b>⋮ → 다른 브라우저로 열기</b>, 아이폰은 오른쪽 아래 <b>⋯ → Safari로 열기</b>를 누릅니다.<br>
+    ③ 홈 화면에 아이콘을 만들어 두면 다음부터 앱처럼 열 수 있습니다. 안드로이드: 오른쪽 위 <b>⋮ → 홈 화면에 추가</b> / 아이폰: 아래쪽 <b>공유(□↑) → 홈 화면에 추가</b>
   </div>
   <p style="font-size:14px;color:var(--muted);margin:0 0 12px">화면 속 <span class="mark">빨간 테두리</span>가 그 단계에서 볼 곳입니다. 화면의 바코드와 기록 값은 예시입니다.</p>
 
@@ -162,6 +176,7 @@
       <tr><th>인터넷이 없어도 되나요?</th><td>한 번 열어 둔 뒤에는 <b>비행기 모드에서도</b> 찍기와 엑셀 저장이 됩니다.</td></tr>
       <tr><th>카메라가 안 켜져요</th><td>① 위치가 비어 있지 않은지 확인합니다. ② 브라우저 설정에서 이 사이트의 카메라 권한이 「허용」인지 확인합니다.</td></tr>
       <tr><th>「자산코드 형식이 아닙니다」가 떠요</th><td>카메라가 바코드를 잘못 읽은 경우입니다(예: 거꾸로 뒤집힌 값, 일부만 읽힌 값). 자산코드는 7자리(분류 영문 1자 + 취득연도 2자 + 일련번호 4자리)입니다. 기록되지 않으니, 바코드를 테두리 안에 바로 맞춰 다시 찍거나 라벨의 번호를 <b>직접 입력</b>하세요. 같은 라벨에서 계속 뜨면 알림 화면을 캡처해 재무팀에 알려 주세요.</td></tr>
+      <tr><th>카카오톡 안에서 써도 되나요?</th><td>권하지 않습니다. 카카오톡 안의 화면에서는 카메라·엑셀 저장이 제대로 되지 않고, 기록도 크롬과 <b>따로</b> 쌓여 나중에 크롬에서 열면 보이지 않습니다. 앱이 카카오톡 안에서 열리면 크롬(사파리)으로 넘기고 안내를 띄웁니다.</td></tr>
       <tr><th>안드로이드에서 공유 창이 안 떠요</th><td>안드로이드 크롬은 웹에서 엑셀 파일을 공유하지 못하게 막습니다. 앱이 대신 파일을 <b>다운로드 폴더에 저장</b>하니, 파일(내 파일) 앱에서 공유하세요.</td></tr>
       <tr><th>같은 바코드가 여러 번 찍혀요</th><td>같은 라벨은 한 번만 기록되도록 되어 있습니다. 그래도 반복되면 화면을 캡처해 재무팀에 알려 주세요.</td></tr>
     </table>

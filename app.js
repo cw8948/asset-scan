@@ -213,10 +213,24 @@
   $('fname').placeholder = defaultName();
   document.addEventListener('visibilitychange', function () { if (document.hidden && camOn) stopCam(); });
 
+  // 카카오톡 안의 간이 브라우저에서 열리면 카메라·파일 저장이 제한되고, 기록도 크롬과 따로 쌓인다.
+  // 카카오톡이 제공하는 「외부 브라우저로 열기」 주소로 넘기고, 안 넘어갈 때를 위해 안내를 띄운다.
+  var kakaoRedirect = null;
+  var ua = navigator.userAgent || '';
+  if (/KAKAOTALK/i.test(ua)) {
+    var android = /Android/i.test(ua);
+    $('inapp').style.display = '';
+    $('inappMsg').textContent = android
+      ? '카메라와 엑셀 저장이 제대로 되지 않아 크롬으로 엽니다. 자동으로 넘어가지 않으면 오른쪽 위 ⋮ → 「다른 브라우저로 열기」를 누르세요.'
+      : '카메라와 엑셀 저장이 제대로 되지 않아 사파리로 엽니다. 자동으로 넘어가지 않으면 오른쪽 아래 ⋯(또는 공유) → 「Safari로 열기」를 누르세요.';
+    kakaoRedirect = 'kakaotalk://web/openExternal?url=' + encodeURIComponent(location.href);
+    try { location.href = kakaoRedirect; } catch (e) {}
+  }
+
   if ('serviceWorker' in navigator) {
     navigator.serviceWorker.register('sw.js').catch(function () {});
   }
 
   render();
-  window.App = { handle: handle, state: function () { return state; }, decoder: null };  // 점검용
+  window.App = { handle: handle, state: function () { return state; }, decoder: null, kakaoRedirect: kakaoRedirect };  // 점검용
 })();
