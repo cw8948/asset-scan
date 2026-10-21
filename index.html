@@ -61,9 +61,11 @@
               text-shadow: 0 1px 2px #000; }
   .tools { display: none; margin-top: 8px; }
   .tools.on { display: flex; }
-  .toast { position: fixed; left: 16px; right: 16px; bottom: max(16px, env(safe-area-inset-bottom));
+  /* 알림은 화면 위쪽(제목 띠 바로 아래) — 아래쪽은 엄지손가락에 가려 놓친다(261021 현장 의견). top 은 app.js 가 제목 띠 높이로 맞춘다 */
+  .toast { position: fixed; left: 16px; right: 16px; top: 110px;
            padding: 14px; border-radius: 12px; color: #fff; font-weight: 700; text-align: center;
-           opacity: 0; transform: translateY(10px); transition: .18s; z-index: 10; pointer-events: none; }
+           box-shadow: 0 6px 18px rgba(0,0,0,.25);
+           opacity: 0; transform: translateY(-10px); transition: .18s; z-index: 10; pointer-events: none; }
   .toast.show { opacity: 1; transform: none; }
   .toast.ok { background: var(--ok); } .toast.warn { background: var(--warn); } .toast.err { background: var(--err); }
   table { width: 100%; border-collapse: collapse; font-size: 14px; }

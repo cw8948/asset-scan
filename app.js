@@ -115,6 +115,7 @@
   var toastTimer = null;
   function toast(msg, kind) {
     var t = $('toast');
+    t.style.top = (document.querySelector('header').getBoundingClientRect().bottom + 8) + 'px';
     t.textContent = msg; t.className = 'toast show ' + kind;
     clearTimeout(toastTimer);
     toastTimer = setTimeout(function () { t.className = 'toast ' + kind; }, kind === 'ok' ? 1400 : msg.length > 40 ? 5000 : 3000);
@@ -181,7 +182,8 @@
     a.href = URL.createObjectURL(f); a.download = f.name;
     document.body.appendChild(a); a.click(); a.remove();
     setTimeout(function () { URL.revokeObjectURL(a.href); }, 5000);
-    if (fromShare) toast('이 폰은 엑셀 공유를 막아서 ' + f.name + ' 을 저장했습니다. 파일 앱 → 다운로드에서 공유하세요.', 'warn');
+    if (fromShare) toast((/Android/i.test(navigator.userAgent) ? '안드로이드에서는' : '이 브라우저에서는') +
+      ' 엑셀 파일을 바로 공유할 수 없어 ' + f.name + ' 을 다운로드 폴더에 저장했습니다. 파일 앱 → 다운로드에서 공유하세요.', 'warn');
     else toast(f.name + ' 저장 (' + state.records.length + '건)', 'ok');
   }
 
