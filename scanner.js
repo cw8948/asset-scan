@@ -1,6 +1,7 @@
 /* 카메라 바코드 스캐너 — 원본 해상도로 판독한다.
  * html5-qrcode 는 영상을 화면 표시 크기(폭 ~360px)로 줄여 판독해 1차원 바코드의 가는 막대가 뭉개졌다(261020 실측: 가짜 카메라 0회 인식).
- * 판독기: 안드로이드 크롬 = 기본 BarcodeDetector, 그 밖(아이폰 등) = ZXing.
+ * 판독기: 모든 기기 ZXing(기본). 안드로이드 크롬 내장 BarcodeDetector 는 현장 실기에서 정방향도 잘 못 읽고
+ *   거꾸로는 전혀 못 읽었다(261021 사용자 피드백, 같은 시각 아이폰 = ZXing 은 양호) → 주소 뒤 ?decoder=native 일 때만 쓴다(비교 시험용).
  * 오인식·반복 방지(Debouncer): 같은 값이 연속 2번 읽혀야 받아들이고, 같은 라벨을 대고 있는 동안은 다시 내보내지 않는다.
  */
 (function (root, factory) {
@@ -105,8 +106,8 @@
     });
   }
 
-  // video: <video> 요소, onCode(code): 받아들인 코드 → Promise('native'|'zxing')
-  function start(video, onCode) {
+  // video: <video> 요소, onCode(code): 받아들인 코드, decoder: 'zxing'(기본) | 'native' → Promise('native'|'zxing')
+  function start(video, onCode, decoder) {
     if (running) return Promise.resolve(native ? 'native' : 'zxing');
     canvas = canvas || document.createElement('canvas');
     ctx = ctx || canvas.getContext('2d', { willReadFrequently: true });
@@ -121,7 +122,9 @@
       video.setAttribute('playsinline', ''); video.muted = true;
       video.srcObject = s;
       return video.play();
-    }).then(makeNative).then(function (det) {
+    }).then(function () {
+      return decoder === 'native' ? makeNative() : null;
+    }).then(function (det) {
       native = det; zx = det ? null : makeZxing();
       if (!native && !zx) throw new Error('바코드 판독기를 불러오지 못했습니다');
       running = true; tick(video, onCode);

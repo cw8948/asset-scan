@@ -64,13 +64,15 @@
     if (!state.location) { toast('위치를 먼저 입력하세요.', 'err'); $('loc').focus(); return; }
     $('cam').classList.add('on');
     $('btnCam').disabled = true;
-    Scanner.start($('video'), function (c) { handle(c, 'camera'); }).then(function () {
-      camOn = true; $('btnCam').disabled = false; $('btnCam').textContent = '카메라 끄기';
+    var decoder = /[?&]decoder=native\b/.test(location.search) ? 'native' : 'zxing';
+    Scanner.start($('video'), function (c) { handle(c, 'camera'); }, decoder).then(function (used) {
+      camOn = true; App.decoder = used;
+      $('btnCam').disabled = false; $('btnCam').textContent = '카메라 끄기';
       var c = Scanner.caps();
       $('btnTorch').style.display = c.torch ? '' : 'none';
       $('btnZoom').style.display = c.zoom && c.zoom.max >= 1.5 ? '' : 'none';
       $('tools').classList.toggle('on', !!(c.torch || (c.zoom && c.zoom.max >= 1.5)));
-      if (c.zoom && c.zoom.max >= 1.5) setZoom(true);   // 기본 2배 — 덜 가까이 대도 초점이 맞게
+      // 확대는 기본 1배 — 2배 기본은 안드로이드에서 평소처럼 가까이 대면 바코드가 테두리를 벗어났다(261021, 아이폰은 확대 미지원이라 1배로 양호)
     }).catch(function (e) {
       $('cam').classList.remove('on'); $('btnCam').disabled = false;
       toast('카메라를 켜지 못했습니다: ' + (e && e.message || e), 'err');
@@ -115,7 +117,7 @@
     var t = $('toast');
     t.textContent = msg; t.className = 'toast show ' + kind;
     clearTimeout(toastTimer);
-    toastTimer = setTimeout(function () { t.className = 'toast ' + kind; }, kind === 'err' ? 3000 : 1400);
+    toastTimer = setTimeout(function () { t.className = 'toast ' + kind; }, kind === 'ok' ? 1400 : msg.length > 40 ? 5000 : 3000);
   }
 
   function hhmmss(ts) {
@@ -154,24 +156,33 @@
   }
   function makeFile() {
     if (!state.records.length) { toast('내보낼 기록이 없습니다.', 'warn'); return null; }
+    if (camOn) stopCam();   // 판독 반복을 멈춰 저사양 폰에서 저장·공유 창이 늦게 뜨지 않게(261021 피드백)
     var buf = AssetExport.buildXls(XLSX, state.records);
     return new File([buf], fileName(), { type: 'application/vnd.ms-excel' });
   }
   function saveFile() {
     var f = makeFile(); if (!f) return;
+    downloadToPhone(f, false);
+  }
+  // 안드로이드 크롬은 웹 공유로 보낼 수 있는 파일 종류를 사진·PDF·텍스트 등으로 제한해 .xls 가 막힌다(261021 현장: 공유 무반응).
+  // 막히면 핸드폰에 저장하고, 파일 앱에서 공유하도록 안내한다. 아이폰 사파리는 그대로 공유 창이 뜬다.
+  function shareFile() {
+    var f = makeFile(); if (!f) return;
+    var ok = false;
+    try { ok = !!(navigator.share && navigator.canShare && navigator.canShare({ files: [f] })); } catch (e) { ok = false; }
+    if (!ok) { downloadToPhone(f, true); return; }
+    navigator.share({ files: [f], title: f.name }).catch(function (e) {
+      if (e && e.name === 'AbortError') return;   // 사용자가 공유 창을 닫음
+      downloadToPhone(f, true);
+    });
+  }
+  function downloadToPhone(f, fromShare) {
     var a = document.createElement('a');
     a.href = URL.createObjectURL(f); a.download = f.name;
     document.body.appendChild(a); a.click(); a.remove();
     setTimeout(function () { URL.revokeObjectURL(a.href); }, 5000);
-    toast(f.name + ' 저장 (' + state.records.length + '건)', 'ok');
-  }
-  function shareFile() {
-    var f = makeFile(); if (!f) return;
-    if (navigator.canShare && navigator.canShare({ files: [f] })) {
-      navigator.share({ files: [f], title: f.name }).catch(function () {});
-    } else {
-      toast('이 기기는 파일 공유를 지원하지 않습니다. [엑셀 저장]을 쓰세요.', 'warn');
-    }
+    if (fromShare) toast('이 폰은 엑셀 공유를 막아서 ' + f.name + ' 을 저장했습니다. 파일 앱 → 다운로드에서 공유하세요.', 'warn');
+    else toast(f.name + ' 저장 (' + state.records.length + '건)', 'ok');
   }
 
   // 이벤트
@@ -207,5 +218,5 @@
   }
 
   render();
-  window.App = { handle: handle, state: function () { return state; } };  // 점검용
+  window.App = { handle: handle, state: function () { return state; }, decoder: null };  // 점검용
 })();
