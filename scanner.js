@@ -94,12 +94,26 @@
   // 초점: 안드로이드는 연속 초점(continuous)을 걸어도 바코드처럼 작은 대상에서 초점을 놓친 채 멈추는 기기가 있다(261027 현장).
   //   → 아무것도 못 읽은 채 REFOCUS_MS 가 지나면 한 번 초점을 다시 잡게(single-shot) 했다가 연속 초점으로 되돌린다.
   //   화면을 누르면 그 자리로 바로 다시 잡는다(focusAt). 지원하지 않는 기기(아이폰 등)에서는 아무것도 하지 않는다.
+  //   수동 초점만 되는 기기(초점 방식 = manual 하나 — 갤럭시 S24 + 삼성 인터넷, 261027 ?diag 실측: 고정 거리라 라벨이 흐림)는
+  //   앱이 초점 거리를 직접 정한다: 라벨을 대는 거리 후보(NEAR, 미터)를 못 읽을 때마다 차례로 바꾼다. 화면을 눌러도 다음 거리로.
   var REFOCUS_MS = 2500;
-  var lastRead = 0, lastRefocus = 0;
-  function focusModes() {
+  var NEAR = [0.15, 0.1, 0.2, 0.3, 0.12, 0.25];
+  var lastRead = 0, lastRefocus = 0, sweep = 0;
+  function rawCaps() {
     var t = track(), c = {};
     try { c = (t && t.getCapabilities) ? t.getCapabilities() : {}; } catch (e) {}
-    return c.focusMode || [];
+    return c;
+  }
+  function focusModes() { return rawCaps().focusMode || []; }
+  function manualOnly() {
+    var m = focusModes();
+    return m.indexOf('manual') >= 0 && m.indexOf('continuous') < 0 && m.indexOf('single-shot') < 0 && !!rawCaps().focusDistance;
+  }
+  function manualStep() {
+    var fd = rawCaps().focusDistance;
+    var d = NEAR[sweep++ % NEAR.length];
+    d = Math.max(fd.min, Math.min(fd.max, d));
+    return apply({ focusMode: 'manual', focusDistance: d });
   }
   function apply(adv) {
     var t = track(); if (!t) return Promise.resolve(false);
@@ -108,6 +122,7 @@
   }
   function refocus(point) {
     var modes = focusModes(); lastRefocus = Date.now();
+    if (manualOnly()) return manualStep();
     if (modes.indexOf('single-shot') < 0) return Promise.resolve(false);
     var adv = { focusMode: 'single-shot' };
     if (point) adv.pointsOfInterest = [point];
@@ -133,7 +148,10 @@
     p.then(function (raw) {
       var now = Date.now();
       if (raw) lastRead = now;
-      else if (now - lastRead > REFOCUS_MS && now - lastRefocus > REFOCUS_MS) refocus(null);
+      else {
+        var wait = manualOnly() ? 1200 : REFOCUS_MS;   // 수동 초점은 거리 후보를 빨리 돌린다(읽히면 그 거리에 머문다)
+        if (now - lastRead > wait && now - lastRefocus > wait) refocus(null);
+      }
       var code = deb.feed(raw, now);
       if (code) onCode(code);
       next();
@@ -176,7 +194,9 @@
     lastRead = lastRefocus = Date.now();
     return open().then(function (s) {
       stream = s;
+      sweep = 0;
       if (focusModes().indexOf('continuous') >= 0) apply({ focusMode: 'continuous' });
+      else if (manualOnly()) manualStep();
       video.setAttribute('playsinline', ''); video.muted = true;
       video.srcObject = s;
       return video.play();
@@ -204,7 +224,8 @@
     try { c = (t && t.getCapabilities) ? t.getCapabilities() : {}; } catch (e) {}
     try { s = (t && t.getSettings) ? t.getSettings() : {}; } catch (e) {}
     return { torch: !!c.torch, zoom: c.zoom ? { min: c.zoom.min, max: c.zoom.max } : null,
-             focus: c.focusMode || [], label: t ? t.label : '', size: (s.width || 0) + '×' + (s.height || 0) };
+             focus: c.focusMode || [], label: t ? t.label : '', size: (s.width || 0) + '×' + (s.height || 0),
+             dist: c.focusDistance ? c.focusDistance.min + '~' + c.focusDistance.max + '(현재 ' + s.focusDistance + ')' : '' };
   }
   function setTorch(on) {
     var t = track(); if (!t) return Promise.resolve(false);

@@ -75,7 +75,8 @@
       // 주소 뒤 ?diag — 현장 기기의 카메라 정보를 화면에 띄운다(초점 문제를 캡처로 받기 위함)
       if (/[?&]diag\b/.test(location.search)) {
         $('tip').textContent = c.label + ' · ' + c.size + ' · 초점 ' + (c.focus.join('/') || '정보 없음') +
-                               ' · 확대 ' + (c.zoom ? c.zoom.min + '~' + c.zoom.max : '없음');
+                               ' · 확대 ' + (c.zoom ? c.zoom.min + '~' + c.zoom.max : '없음') +
+                               (c.dist ? ' · 거리 ' + c.dist : '');
       }
       // 확대는 기본 1배 — 2배 기본은 안드로이드에서 평소처럼 가까이 대면 바코드가 테두리를 벗어났다(261021, 아이폰은 확대 미지원이라 1배로 양호)
     }).catch(function (e) {
@@ -242,6 +243,17 @@
       : '카메라와 엑셀 저장이 제대로 되지 않아 사파리로 엽니다. 자동으로 넘어가지 않으면 오른쪽 아래 ⋯(또는 공유) → 「Safari로 열기」를 누르세요.';
     kakaoRedirect = 'kakaotalk://web/openExternal?url=' + encodeURIComponent(location.href);
     try { location.href = kakaoRedirect; } catch (e) {}
+  } else if (/SamsungBrowser/i.test(ua)) {
+    // 삼성 인터넷: 갤럭시 S24 에서 초점 방식이 「manual」 하나뿐 = 자동 초점이 꺼진 채 고정 거리에 묶여 라벨이 흐렸다
+    // (261027 ?diag 실측, 같은 앱이 S25 에서는 됨). 기록이 브라우저별로 따로 쌓이므로 자동으로 넘기지 않고 버튼으로 안내한다.
+    $('inapp').style.display = '';
+    $('inappTitle').textContent = '삼성 인터넷으로 열렸습니다';
+    $('inappMsg').textContent = '삼성 인터넷에서는 카메라 초점이 고정돼 바코드가 흐리게 보이는 폰이 있습니다. ' +
+      '아래 버튼으로 크롬에서 여세요. 찍은 기록은 브라우저마다 따로 저장되니, 한 브라우저에서만 찍으세요.';
+    var link = $('inappLink');
+    link.href = 'intent://' + location.host + location.pathname + location.search +
+                '#Intent;scheme=https;package=com.android.chrome;end';
+    link.style.display = 'block';
   }
 
   if ('serviceWorker' in navigator) {
