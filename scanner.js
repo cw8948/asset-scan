@@ -91,6 +91,37 @@
     return true;
   }
 
+  // 초점: 안드로이드는 연속 초점(continuous)을 걸어도 바코드처럼 작은 대상에서 초점을 놓친 채 멈추는 기기가 있다(261027 현장).
+  //   → 아무것도 못 읽은 채 REFOCUS_MS 가 지나면 한 번 초점을 다시 잡게(single-shot) 했다가 연속 초점으로 되돌린다.
+  //   화면을 누르면 그 자리로 바로 다시 잡는다(focusAt). 지원하지 않는 기기(아이폰 등)에서는 아무것도 하지 않는다.
+  var REFOCUS_MS = 2500;
+  var lastRead = 0, lastRefocus = 0;
+  function focusModes() {
+    var t = track(), c = {};
+    try { c = (t && t.getCapabilities) ? t.getCapabilities() : {}; } catch (e) {}
+    return c.focusMode || [];
+  }
+  function apply(adv) {
+    var t = track(); if (!t) return Promise.resolve(false);
+    try { return t.applyConstraints({ advanced: [adv] }).then(function () { return true; }, function () { return false; }); }
+    catch (e) { return Promise.resolve(false); }
+  }
+  function refocus(point) {
+    var modes = focusModes(); lastRefocus = Date.now();
+    if (modes.indexOf('single-shot') < 0) return Promise.resolve(false);
+    var adv = { focusMode: 'single-shot' };
+    if (point) adv.pointsOfInterest = [point];
+    return apply(adv).then(function (ok) {
+      if (!ok && point) return apply({ focusMode: 'single-shot' });   // 초점 위치 지정을 못 하는 기기
+      return ok;
+    }).then(function (ok) {
+      if (modes.indexOf('continuous') >= 0) setTimeout(function () { if (running) apply({ focusMode: 'continuous' }); }, 1200);
+      return ok;
+    });
+  }
+  // x, y: 영상 안의 위치(0~1)
+  function focusAt(x, y) { return refocus({ x: x, y: y }); }
+
   function tick(video, onCode) {
     if (!running) return;
     var next = function () { if (running) timer = setTimeout(function () { tick(video, onCode); }, 100); };
@@ -100,9 +131,39 @@
       ? native.detect(canvas).then(function (d) { return d.length ? d[0].rawValue : null; }).catch(function () { return null; })
       : Promise.resolve(zx ? decodeZxing() : null);
     p.then(function (raw) {
-      var code = deb.feed(raw, Date.now());
+      var now = Date.now();
+      if (raw) lastRead = now;
+      else if (now - lastRead > REFOCUS_MS && now - lastRefocus > REFOCUS_MS) refocus(null);
+      var code = deb.feed(raw, now);
       if (code) onCode(code);
       next();
+    });
+  }
+
+  // 안드로이드 다중 렌즈 폰: facingMode 만 주면 광각·망원 렌즈가 잡혀 가까운 라벨에 초점이 안 맞는 기기가 있다.
+  //   크롬은 렌즈를 「camera2 N, facing back」 으로 부르고 기본(주) 카메라가 0 번이다 → 0 번이 따로 있으면 그것으로 다시 연다.
+  //   이름(label)은 카메라 권한을 받은 뒤에만 보이므로, 먼저 facingMode 로 연 다음에 고른다.
+  function mainBackCamera(current) {
+    if (!/Android/i.test(navigator.userAgent) || !navigator.mediaDevices.enumerateDevices) return Promise.resolve(null);
+    return navigator.mediaDevices.enumerateDevices().then(function (ds) {
+      var main = ds.filter(function (d) { return d.kind === 'videoinput' && /camera2 0\b.*back/i.test(d.label); })[0];
+      return main && main.label !== current ? main.deviceId : null;
+    }).catch(function () { return null; });
+  }
+
+  var VIDEO = { width: { ideal: 1920 }, height: { ideal: 1080 } };
+  function open() {
+    return navigator.mediaDevices.getUserMedia({
+      audio: false, video: Object.assign({ facingMode: { ideal: 'environment' } }, VIDEO)
+    }).then(function (s) {
+      return mainBackCamera(s.getVideoTracks()[0].label).then(function (id) {
+        if (!id) return s;
+        s.getTracks().forEach(function (t) { t.stop(); });
+        return navigator.mediaDevices.getUserMedia({ audio: false, video: Object.assign({ deviceId: { exact: id } }, VIDEO) })
+          .catch(function () {   // 0 번을 못 열면 처음 방식으로
+            return navigator.mediaDevices.getUserMedia({ audio: false, video: Object.assign({ facingMode: { ideal: 'environment' } }, VIDEO) });
+          });
+      });
     });
   }
 
@@ -112,13 +173,10 @@
     canvas = canvas || document.createElement('canvas');
     ctx = ctx || canvas.getContext('2d', { willReadFrequently: true });
     deb.reset();
-    return navigator.mediaDevices.getUserMedia({
-      audio: false,
-      video: { facingMode: { ideal: 'environment' }, width: { ideal: 1920 }, height: { ideal: 1080 } }
-    }).then(function (s) {
+    lastRead = lastRefocus = Date.now();
+    return open().then(function (s) {
       stream = s;
-      var track = s.getVideoTracks()[0];
-      try { track.applyConstraints({ advanced: [{ focusMode: 'continuous' }] }).catch(function () {}); } catch (e) {}
+      if (focusModes().indexOf('continuous') >= 0) apply({ focusMode: 'continuous' });
       video.setAttribute('playsinline', ''); video.muted = true;
       video.srcObject = s;
       return video.play();
@@ -142,9 +200,11 @@
   // 플래시·확대 — 지원하는 핸드폰에서만(주로 안드로이드 크롬)
   function track() { return stream ? stream.getVideoTracks()[0] : null; }
   function caps() {
-    var t = track(), c = {};
+    var t = track(), c = {}, s = {};
     try { c = (t && t.getCapabilities) ? t.getCapabilities() : {}; } catch (e) {}
-    return { torch: !!c.torch, zoom: c.zoom ? { min: c.zoom.min, max: c.zoom.max } : null };
+    try { s = (t && t.getSettings) ? t.getSettings() : {}; } catch (e) {}
+    return { torch: !!c.torch, zoom: c.zoom ? { min: c.zoom.min, max: c.zoom.max } : null,
+             focus: c.focusMode || [], label: t ? t.label : '', size: (s.width || 0) + '×' + (s.height || 0) };
   }
   function setTorch(on) {
     var t = track(); if (!t) return Promise.resolve(false);
@@ -156,5 +216,6 @@
     return t.applyConstraints({ advanced: [{ zoom: z }] }).then(function () { return z; }, function () { return null; });
   }
 
-  return { start: start, stop: stop, caps: caps, setTorch: setTorch, setZoom: setZoom, Debouncer: Debouncer, VALID: VALID };
+  return { start: start, stop: stop, caps: caps, setTorch: setTorch, setZoom: setZoom, focusAt: focusAt,
+           Debouncer: Debouncer, VALID: VALID };
 });

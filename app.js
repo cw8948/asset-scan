@@ -72,6 +72,11 @@
       $('btnTorch').style.display = c.torch ? '' : 'none';
       $('btnZoom').style.display = c.zoom && c.zoom.max >= 1.5 ? '' : 'none';
       $('tools').classList.toggle('on', !!(c.torch || (c.zoom && c.zoom.max >= 1.5)));
+      // 주소 뒤 ?diag — 현장 기기의 카메라 정보를 화면에 띄운다(초점 문제를 캡처로 받기 위함)
+      if (/[?&]diag\b/.test(location.search)) {
+        $('tip').textContent = c.label + ' · ' + c.size + ' · 초점 ' + (c.focus.join('/') || '정보 없음') +
+                               ' · 확대 ' + (c.zoom ? c.zoom.min + '~' + c.zoom.max : '없음');
+      }
       // 확대는 기본 1배 — 2배 기본은 안드로이드에서 평소처럼 가까이 대면 바코드가 테두리를 벗어났다(261021, 아이폰은 확대 미지원이라 1배로 양호)
     }).catch(function (e) {
       $('cam').classList.remove('on'); $('btnCam').disabled = false;
@@ -198,12 +203,22 @@
   $('loc').addEventListener('keydown', function (e) { if (e.key === 'Enter') this.blur(); });
   $('btnCam').onclick = function () { camOn ? stopCam() : startCam(); };
   $('btnZoom').onclick = function () { setZoom(!zoomed); };
+  // 화면을 누르면 그 자리에 초점을 다시 잡는다(지원하는 안드로이드만)
+  $('cam').addEventListener('click', function (e) {
+    if (!camOn) return;
+    var r = this.getBoundingClientRect();
+    Scanner.focusAt((e.clientX - r.left) / r.width, (e.clientY - r.top) / r.height).then(function (ok) {
+      if (ok) toast('초점을 다시 맞춥니다.', 'ok');
+    });
+  });
   $('btnTorch').onclick = function () {
     Scanner.setTorch(!torch).then(function (ok) { if (ok) { torch = !torch; $('btnTorch').classList.toggle('on', torch); } });
   };
-  $('manual').addEventListener('keydown', function (e) {
-    if (e.key !== 'Enter') return;
-    handle(this.value, 'manual'); this.value = '';
+  // 직접 입력: [기록] 버튼 또는 키보드 완료(Enter) → form submit 하나로 받는다(keydown 'Enter' 는 안드로이드에서 안 올 때가 있다)
+  $('manualForm').addEventListener('submit', function (e) {
+    e.preventDefault();
+    var m = $('manual');
+    if (handle(m.value, 'manual')) { m.value = ''; m.focus(); }   // 실패하면 고쳐 쓸 수 있게 값을 남긴다
   });
   $('btnSave').onclick = saveFile;
   $('btnShare').onclick = shareFile;

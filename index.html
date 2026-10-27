@@ -57,8 +57,8 @@
                border-radius: 8px; box-shadow: 0 0 0 999px rgba(0,0,0,.35); transition: border-color .15s; }
   .cam .band.hit { border-color: #22c55e; }
   .cam .band.bad { border-color: #ef4444; }
-  .cam .tip { position: absolute; left: 0; right: 0; bottom: 8px; text-align: center; color: #fff; font-size: 12px;
-              text-shadow: 0 1px 2px #000; }
+  .cam .tip { position: absolute; left: 8px; right: 8px; bottom: 8px; text-align: center; color: #fff; font-size: 12px;
+              text-shadow: 0 1px 2px #000; pointer-events: none; }
   .tools { display: none; margin-top: 8px; }
   .tools.on { display: flex; }
   /* 알림은 화면 위쪽(제목 띠 바로 아래) — 아래쪽은 엄지손가락에 가려 놓친다(261021 현장 의견). top 은 app.js 가 제목 띠 높이로 맞춘다 */
@@ -102,7 +102,7 @@
     <div class="cam" id="cam">
       <video id="video" playsinline muted></video>
       <div class="band" id="band"></div>
-      <div class="tip">바코드를 흰 테두리 안에 맞추세요 (세로·거꾸로도 읽습니다)</div>
+      <div class="tip" id="tip">한 뼘(15cm) 떨어져 맞추세요 · 흐리면 화면 누르기</div>
     </div>
     <div class="row" style="margin-top:10px">
       <button id="btnCam" class="primary">카메라 켜기</button>
@@ -111,10 +111,13 @@
       <button id="btnZoom" class="ghost">확대 ×1</button>
       <button id="btnTorch" class="ghost">플래시</button>
     </div>
-    <div style="margin-top:10px">
-      <input id="manual" type="text" autocomplete="off" autocapitalize="characters" maxlength="10"
-             placeholder="라벨이 훼손됐으면 직접 입력 후 Enter">
-    </div>
+    <!-- 직접 입력은 form 으로 받는다: 폼 밖의 칸이면 안드로이드 키보드에 「다음」 키가 떠서 Enter 가 안 오고,
+         조합 중인 Enter 는 keydown 'Enter' 가 아니라 229 로 온다(261027 현장 「수기입력 후 enter 안 됨」) -->
+    <form id="manualForm" class="row" style="margin-top:10px" autocomplete="off">
+      <input id="manual" type="text" autocomplete="off" autocapitalize="characters" maxlength="10" enterkeyhint="done"
+             placeholder="라벨이 훼손됐으면 번호 직접 입력">
+      <button id="btnManual" type="submit" class="gold" style="flex:0 0 auto">기록</button>
+    </form>
     <p class="hint">같은 자산을 두 번 찍으면 기록하지 않고 알려 줍니다.</p>
   </section>
 
