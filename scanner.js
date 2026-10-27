@@ -69,11 +69,16 @@
   // 가운데 띠를 원본 해상도로 잘라 판독한다.
   // 가로 띠(폭 90% × 높이 40%)와 세로 띠(폭 40% × 높이 90%, 90° 돌려 가로로 눕힘)를 번갈아 본다.
   // 세로 띠가 없으면 세로로 돌아간 바코드를 한 번도 못 읽는다(261020 탐침: 90°·270° 판독 0회).
+  // 띠는 「화면에 보이는 부분」 기준으로 자른다: 화면 칸(4:3)이 영상을 object-fit: cover 로 잘라 보이므로,
+  //   세로 영상(안드로이드 1080×1920)이면 위아래 대부분이 화면 밖이다. 영상 전체 기준으로 자르면 안 보이는 곳까지 판독해
+  //   느려지고(판독 횟수 감소) 화면 테두리와도 어긋났다(261027).
   var phase = 0;
   function grab(video, vertical) {
     var vw = video.videoWidth, vh = video.videoHeight;
     if (!vw || !vh) return false;
-    var sw = Math.round(vw * (vertical ? 0.4 : 0.9)), sh = Math.round(vh * (vertical ? 0.9 : 0.4));
+    var box = (video.clientWidth && video.clientHeight) ? video.clientWidth / video.clientHeight : 4 / 3;
+    var visW = Math.min(vw, vh * box), visH = Math.min(vh, vw / box);
+    var sw = Math.round(visW * (vertical ? 0.4 : 0.9)), sh = Math.round(visH * (vertical ? 0.95 : 0.5));
     var long = vertical ? sh : sw, k = Math.min(1, 1280 / long);
     var dw = Math.round(sw * k), dh = Math.round(sh * k);
     var sx = (vw - sw) / 2, sy = (vh - sh) / 2;
@@ -97,7 +102,7 @@
   //   수동 초점만 되는 기기(초점 방식 = manual 하나 — 갤럭시 S24 + 삼성 인터넷, 261027 ?diag 실측: 고정 거리라 라벨이 흐림)는
   //   앱이 초점 거리를 직접 정한다: 라벨을 대는 거리 후보(NEAR, 미터)를 못 읽을 때마다 차례로 바꾼다. 화면을 눌러도 다음 거리로.
   var REFOCUS_MS = 2500;
-  var NEAR = [0.15, 0.1, 0.2, 0.3, 0.12, 0.25];
+  var NEAR = [0.2, 0.15, 0.25, 0.3, 0.12, 0.1];   // 안드로이드는 확대 ×2 + 20cm 로 찍으므로 20cm 부터
   var lastRead = 0, lastRefocus = 0, sweep = 0;
   function rawCaps() {
     var t = track(), c = {};
@@ -169,7 +174,9 @@
     }).catch(function () { return null; });
   }
 
-  var VIDEO = { width: { ideal: 1920 }, height: { ideal: 1080 } };
+  // 1080p 보다 큰 영상을 요청한다(되는 폰만 커짐, ideal 이라 안 되는 폰도 실패하지 않음).
+  //   안드로이드는 세로 영상이라 1080p 면 가로 화소가 1080 뿐이었다(261027 실측) → 1440p 면 가로 1440.
+  var VIDEO = { width: { ideal: 2560 }, height: { ideal: 1440 } };
   function open() {
     return navigator.mediaDevices.getUserMedia({
       audio: false, video: Object.assign({ facingMode: { ideal: 'environment' } }, VIDEO)

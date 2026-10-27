@@ -78,7 +78,10 @@
                                ' · 확대 ' + (c.zoom ? c.zoom.min + '~' + c.zoom.max : '없음') +
                                (c.dist ? ' · 거리 ' + c.dist : '');
       }
-      // 확대는 기본 1배 — 2배 기본은 안드로이드에서 평소처럼 가까이 대면 바코드가 테두리를 벗어났다(261021, 아이폰은 확대 미지원이라 1배로 양호)
+      // 안드로이드는 확대 ×2 로 시작 — 안드로이드 크롬은 세워 들면 영상이 세로(1080×1920, 261027 ?diag 실측 2대)라 가로로 놓인
+      // 바코드에 쓸 화소가 1080 뿐이고, 가까이 대면 초점이 안 맞는다. ×2 + 20cm 거리면 초점이 맞고 막대당 화소가 두 배가 된다.
+      // (261021 에 ×2 기본을 뺀 이유 = 평소처럼 가까이 대면 테두리를 벗어남 → 「20cm 떨어져서」 안내와 함께 다시 켠다. 아이폰은 ×1)
+      if (/Android/i.test(navigator.userAgent) && c.zoom && c.zoom.max >= 2) setZoom(true);
     }).catch(function (e) {
       $('cam').classList.remove('on'); $('btnCam').disabled = false;
       toast('카메라를 켜지 못했습니다: ' + (e && e.message || e), 'err');
@@ -89,6 +92,7 @@
     camOn = false; torch = false; zoomed = false;
     $('cam').classList.remove('on'); $('tools').classList.remove('on');
     $('btnTorch').classList.remove('on');
+    $('btnZoom').classList.remove('on'); $('btnZoom').textContent = '확대 ×1';
     $('btnCam').textContent = '카메라 켜기';
   }
   function setZoom(on) {
